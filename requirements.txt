@@ -1,0 +1,5 @@
+streamlit>=1.28
+pandas>=1.5
+pdfplumber>=0.9
+xlrd>=2.0
+openpyxl>=3.0

@@ -1,9 +1,9 @@
-import streamlit as st
+﻿import streamlit as st
 import json, os, re, tempfile
 import pandas as pd
 import pdfplumber
 
-st.set_page_config(page_title="高考录取判断", page_icon="🎓", layout="centered")
+st.set_page_config(page_title="高考录取辅助查询", page_icon="🎓", layout="centered")
 st.markdown("<style>#MainMenu{visibility:hidden}footer{visibility:hidden}</style>", unsafe_allow_html=True)
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin888")
@@ -18,10 +18,14 @@ def load_data():
 
 def data_info():
     if "custom_data" in st.session_state and st.session_state.custom_data:
-        return st.session_state.custom_info
-    with open(DATA_PATH, "r", encoding="utf-8") as f:
-        meta = json.load(f)["meta"]
-    return f"📊 投档数据：{meta['source']}（共{meta['count']}条）"
+        return st.session_state.custom_info, st.session_state.custom_year
+    try:
+        with open(DATA_PATH, "r", encoding="utf-8") as f:
+            meta = json.load(f)["meta"]
+    except:
+        return "投档数据未加载", ""
+    year = meta.get("year", "")
+    return f"📊 参考数据：{meta['source']}（共{meta['count']}条）", year
 
 # ---- PDF解析 ----
 def parse_pdf(filepath):
@@ -119,8 +123,8 @@ def judge(rank, lookup, vols):
     return results, False
 
 # ===================== UI =====================
-st.title("🎓 高考录取判断")
-st.caption(data_info())
+st.title("🎫 高考录取辅助查询")
+st.caption("📍 仅山东")
 
 # ---- 输入方式选择 ----
 tab1, tab2 = st.tabs(["📄 上传PDF志愿表", "📝 粘贴志愿文本"])
@@ -204,6 +208,9 @@ with st.expander("⚙️ 管理员（更新投档数据）"):
     pwd = st.text_input("管理员密码", type="password", key="admin_pwd")
     if pwd == ADMIN_PASSWORD:
         st.success("✅ 验证通过")
+        # 显示数据来源
+        _t, _y = data_info()
+        st.info(f"📊 当前参考数据：{_y}年")
         new_file = st.file_uploader("上传新的投档表 Excel", type=["xls", "xlsx"], key="admin_excel")
         if new_file:
             with st.spinner("正在处理..."):
@@ -234,8 +241,12 @@ with st.expander("⚙️ 管理员（更新投档数据）"):
                             key = sc + "|" + mc
                             new_data[key] = min(new_data[key], rk) if key in new_data else rk
                         
+                        title_row = str(df.iloc[0, 0]).strip() if len(df) > 0 else ""
+                        yr_m = re.search(r"(20\d{2})", title_row)
+                        up_yr = yr_m.group(1) if yr_m else "未知"
                         st.session_state.custom_data = new_data
-                        st.session_state.custom_info = f"📊 投档数据：管理员上传（共{len(new_data)}条）"
+                        st.session_state.custom_info = f"📊 投档数据：管理员上传（{up_yr}年，共{len(new_data)}条）"
+                        st.session_state.custom_year = up_yr
                         st.success(f"✅ 数据更新成功！共{len(new_data)}条。当前会话有效。如需永久更新，请在GitHub上替换data.json")
                         st.rerun()
                 except Exception as e:
@@ -245,5 +256,6 @@ with st.expander("⚙️ 管理员（更新投档数据）"):
     elif pwd:
         st.error("密码错误")
 
+st.warning("⚠️ 数据仅供参考，程序可能存在bug，具体投档以山东省教育招生考试院官网发布信息为准")
 st.divider()
 st.caption("💡 从第1志愿依次判断，你的位次 ≤ 该专业最低位次即被录取。数据仅本次处理，不保存。")

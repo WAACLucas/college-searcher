@@ -99,9 +99,6 @@ def judge(rank, lookup, vols):
         if len(item) == 5:
             vn, sf, sc, mc, mn = item
             key = sc + "|" + mc
-            if matched:
-                results.append({"志愿号": vn, "院校": sf, "专业": (mc + mn)[:20], "最低位次": "—", "结果": "已录取（后续不再判断）"})
-                continue
             if key in lookup:
                 mr = lookup[key]
                 if rank <= mr:
@@ -114,9 +111,6 @@ def judge(rank, lookup, vols):
         elif len(item) == 3:
             vn, sc, mc = item
             key = sc + "|" + mc
-            if matched:
-                results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": "—", "结果": "已录取（后续不再判断）"})
-                continue
             if key in lookup:
                 mr = lookup[key]
                 if rank <= mr:
@@ -190,16 +184,15 @@ if "last_results" in st.session_state and st.session_state.last_results:
     st.divider()
 
     if matched:
-        tr = results[-1]
         st.markdown(
-            f"<div style=\"background:#d4edda;border:2px solid #28a745;border-radius:12px;padding:20px;text-align:center;margin:10px 0\">"
-            f"<div style=\"font-size:32px;font-weight:700;color:#155724\">\U0001f389 \u547d\u4e2d\uff01</div>"
-            f"<div style=\"font-size:20px;color:#155724;margin:10px 0\">\u7b2c {tr['\u5fd7\u613f\u53f7']} \u5fd7\u613f</div>"
-            f"<div style=\"font-size:16px;color:#333;margin:4px 0\">\U0001f3eb {tr['\u9662\u6821']}</div>"
-            f"<div style=\"font-size:15px;color:#555\">\U0001f4da {tr['\u4e13\u4e1a'][:30]}</div>"
-            f"<div style=\"font-size:14px;color:#666;margin-top:6px\">\U0001f4ca \u6700\u4f4e\u4f4d\u6b21 {tr['\u6700\u4f4e\u4f4d\u6b21']:,} / \u4f60\u7684\u4f4d\u6b21 {my_rank:,}</div>"
-            f"</div>",
-            unsafe_allow_html=True
+        f"<div style=\"background:#d4edda;border:2px solid #28a745;border-radius:12px;padding:20px;text-align:center;margin:10px 0\">"
+        f"<div style=\"font-size:32px;font-weight:700;color:#155724\">\U0001f389 \u547d\u4e2d\uff01</div>"
+        f"<div style=\"font-size:20px;color:#155724;margin:10px 0\">\u7b2c {tr['\u5fd7\u613f\u53f7']} \u5fd7\u613f</div>"
+        f"<div style=\"font-size:16px;color:#333;margin:4px 0\">\U0001f3eb {tr['\u9662\u6821']}</div>"
+        f"<div style=\"font-size:15px;color:#555\">\U0001f4da {tr['\u4e13\u4e1a'][:30]}</div>"
+        f"<div style=\"font-size:14px;color:#666;margin-top:6px\">\U0001f4ca \u6700\u4f4e\u4f4d\u6b21 {tr['\u6700\u4f4e\u4f4d\u6b21']:,} / \u4f60\u7684\u4f4d\u6b21 {my_rank:,}</div>"
+        f"</div>",
+        unsafe_allow_html=True
         )
 
         hc = 1

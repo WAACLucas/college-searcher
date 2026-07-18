@@ -162,35 +162,21 @@ if st.button("🚀 开始判断", type="primary", disabled=not ready):
     st.divider()
     if matched:
         tr = results[-1]
-        v = tr['志愿号']
-        st.success(f'🎉 恭喜！你被 **第 {v} 志愿** 录取！')
-        a, b, c = st.columns(3)
-        a.metric("院校", tr["院校"][:12])
-        b.metric("专业", tr["专业"][:12])
-        mr = tr['最低位次']
-        c.metric('2025最低位次', f'{mr:,}')
+        v = tr["志愿号"]
+        school = tr["院校"]
+        major = tr["专业"]
+        mr = tr["最低位次"]
+        st.markdown(
+            f'<div style="background:#d4edda;border:2px solid #28a745;border-radius:12px;padding:20px;text-align:center;margin:10px 0">'
+            f'<div style="font-size:32px;font-weight:700;color:#155724">🎉 命中！</div>'
+            f'<div style="font-size:20px;color:#155724;margin:10px 0">第 {v} 志愿</div>'
+            f'<div style="font-size:16px;color:#333;margin:4px 0">🏫 {school}</div>'
+            f'<div style="font-size:15px;color:#555">📚 {major[:30]}</div>'
+            f'<div style="font-size:14px;color:#666;margin-top:6px">📊 最低位次 {mr:,} / 你的位次 {rank:,}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
-    hc = 1 if matched else 0
-    lc = sum(1 for r in results if r["结果"] == "位次不够")
-    nc = sum(1 for r in results if r["结果"] == "无匹配")
-    x, y, z = st.columns(3)
-    x.metric("✅ 命中", hc)
-    y.metric("位次不够", lc)
-    z.metric("无匹配", nc)
-
-    st.subheader("📋 所有志愿详情")
-    df = pd.DataFrame(results)
-
-    def hl(r):
-        if r["结果"] == "✅ 录取":
-            return ["background:#d4edda;font-weight:bold"] * len(r)
-        if r["结果"] == "位次不够":
-            return ["background:#fff3cd"] * len(r)
-        return [""] * len(r)
-
-    st.dataframe(df.style.apply(hl, axis=1), use_container_width=True, hide_index=True)
-    if nc > 0:
-        st.caption("⚠ 「无匹配」表示该组合未在投档表中找到，可能是当年未招生或代码变化。")
 
 with st.expander("⚙️ 管理员（更新投档数据）"):
     pwd = st.text_input("管理员密码", type="password", key="admin_pwd")

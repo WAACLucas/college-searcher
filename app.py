@@ -1,4 +1,4 @@
-﻿import streamlit as st
+import streamlit as st
 import json, os, re, tempfile
 import pandas as pd
 import pdfplumber
@@ -122,110 +122,137 @@ def judge(rank, lookup, vols):
                 results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": "—", "结果": "无匹配"})
     return results, False
 
-# ===================== UI =====================
-st.title("🎫 高考录取辅助查询")
-st.caption("📍 仅山东")
+# ===== UI =====
+if "show_admin" not in st.session_state:
+    st.session_state.show_admin = False
+if "input_mode" not in st.session_state:
+    st.session_state.input_mode = None
+if "pdf_vols" not in st.session_state:
+    st.session_state.pdf_vols = None
+if "text_vols" not in st.session_state:
+    st.session_state.text_vols = None
 
-# ---- 输入方式选择 ----
-tab1, tab2 = st.tabs(["📄 上传PDF志愿表", "📝 粘贴志愿文本"])
+col1, col2 = st.columns([1, 12])
+with col1:
+    if st.button("\U0001f3ab", key="adm_toggle", help="\u7ba1\u7406\u5458\u5165\u53e3"):
+        now = time.time()
+        if "adm_clicks" not in st.session_state:
+            st.session_state.adm_clicks = []
+        st.session_state.adm_clicks.append(now)
+        st.session_state.adm_clicks = [t for t in st.session_state.adm_clicks if now - t < 2]
+        if len(st.session_state.adm_clicks) >= 2:
+            st.session_state.show_admin = not st.session_state.show_admin
+            st.session_state.adm_clicks = []
+            st.rerun()
+with col2:
+    st.title("\u9ad8\u8003\u5f55\u53d6\u8f85\u52a9\u67e5\u8be2")
+st.caption("\U0001f4cd \u4ec5\u5c71\u4e1c")
 
-vols = None
-input_method = None
+tab1, tab2 = st.tabs(["\U0001f4c4 \u4e0a\u4f20PDF\u5fd7\u613f\u8868", "\U0001f4dd \u7c98\u8d34\u5fd7\u613f\u6587\u672c"])
 
 with tab1:
-    st.info("💡 推荐使用山东省教育招生考试院下载的官方 PDF 志愿文件，解析最准确")
-    pdf_file = st.file_uploader("选择 PDF 文件", type=["pdf"], key="pdf")
+    st.info("\U0001f4a1 \u63a8\u8350\u4f7f\u7528\u5c71\u4e1c\u7701\u6559\u80b2\u62db\u751f\u8003\u8bd5\u9662\u4e0b\u8f7d\u7684\u5b98\u65b9 PDF \u5fd7\u613f\u6587\u4ef6\uff0c\u89e3\u6790\u6700\u51c6\u786e")
+    pdf_file = st.file_uploader("\u9009\u62e9 PDF \u6587\u4ef6", type=["pdf"], key="pdf")
     if pdf_file:
-        with st.spinner("正在解析PDF..."):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as f:
-                f.write(pdf_file.getvalue()); pp = f.name
-            try:
-                vols = parse_pdf(pp)
-                st.success(f"✅ 解析成功：共{len(vols)}个志愿")
-                input_method = "pdf"
-            except Exception as e:
-                st.error(f"PDF解析失败：{str(e)}")
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as fp:
+                fp.write(pdf_file.getvalue()); pp = fp.name
+            st.session_state.pdf_vols = parse_pdf(pp)
             os.unlink(pp)
-
+            st.session_state.input_mode = "pdf"
+            st.session_state.text_vols = None
+            st.success(f"\u2705 \u89e3\u6790\u6210\u529f\uff1a\u5171{len(st.session_state.pdf_vols)}\u4e2a\u5fd7\u613f")
+        except:
+            st.error("\u274c \u6587\u4ef6\u683c\u5f0f\u65e0\u6cd5\u8bc6\u522b\uff0c\u8bf7\u786e\u8ba4\u662f\u5c71\u4e1c\u7701\u6559\u80b2\u62db\u751f\u8003\u8bd5\u9662\u4e0b\u8f7d\u7684\u5b98\u65b9 PDF\uff0c\u6216\u5207\u6362\u5230\u300c\u7c98\u8d34\u5fd7\u613f\u6587\u672c\u300d\u624b\u52a8\u8f93\u5165\u3002")
 with tab2:
-    st.info("💡 如果无法获取官方PDF，请按以下格式粘贴志愿内容")
-    st.markdown("""
-    **精简格式（推荐）：**
-    ```
-    1 A558 2Y
-    2 E880 01
-    3 A533 63
-    ```
-    **完整格式（从官方PDF直接复制）：**
-    打开官方 PDF → Ctrl+A 全选 → Ctrl+C 复制 → 粘贴到下方
-    """)
-    paste_text = st.text_area("在此粘贴志愿内容", height=180, placeholder="例如：\n1 A558 2Y\n2 E880 01\n...")
+    st.info("\U0001f4a1 \u7cbe\u7b80\u683c\u5f0f\uff1a\u6bcf\u884c\u4e00\u4e2a\u300c\u5e8f\u53f7 \u9662\u6821\u4ee3\u7801 \u4e13\u4e1a\u4ee3\u7801\u300d\uff0c\u4f8b\u5982\uff1a\n`1 A558 2Y`\n\u6216\u4ece\u5b98\u65b9 PDF \u76f4\u63a5\u590d\u5236\u7c98\u8d34")
+    paste_text = st.text_area("\u5728\u6b64\u7c98\u8d34\u5fd7\u613f\u5185\u5bb9", height=180, key="paste_input", placeholder="\u4f8b\u5982\uff1a\n1 A558 2Y\n2 E880 01\n...")
     if paste_text.strip():
         try:
-            vols = parse_text(paste_text)
-            st.success(f"✅ 解析成功：共{len(vols)}个志愿")
-            input_method = "text"
-        except Exception as e:
-            st.error(f"解析失败：{str(e)}")
+            st.session_state.text_vols = parse_text(paste_text)
+            st.session_state.input_mode = "text"
+            st.session_state.pdf_vols = None
+            st.success(f"\u2705 \u89e3\u6790\u6210\u529f\uff1a\u5171{len(st.session_state.text_vols)}\u4e2a\u5fd7\u613f")
+        except:
+            st.error("\u274c \u683c\u5f0f\u65e0\u6cd5\u8bc6\u522b\uff0c\u8bf7\u68c0\u67e5\u5185\u5bb9\u662f\u5426\u6b63\u786e\uff0c\u63a8\u8350\u4f7f\u7528\u7cbe\u7b80\u683c\u5f0f\u3002")
 
-# ---- 排名输入 ----
-rank = st.number_input("🔢 你的省排名（位次）", min_value=1, step=1, value=None, placeholder="例如：10000")
+vols = None
+if st.session_state.input_mode == "pdf" and st.session_state.pdf_vols:
+    vols = st.session_state.pdf_vols
+elif st.session_state.input_mode == "text" and st.session_state.text_vols:
+    vols = st.session_state.text_vols
 
-# ---- 开始判断 ----
+rank = st.number_input("\U0001f522 \u4f60\u7684\u7701\u6392\u540d\uff08\u4f4d\u6b21\uff09", min_value=1, step=1, value=None, placeholder="\u4f8b\u5982\uff1a10000\uff0c\u53ef\u5728\u6210\u7ee9\u901a\u77e5\u5355\u6216\u8003\u8bd5\u9662\u5b98\u7f51\u67e5\u770b")
 ready = vols is not None and rank is not None and rank > 0
 
-if st.button("🚀 开始判断", type="primary", disabled=not ready):
+if st.button("\U0001f680 \u5f00\u59cb\u5224\u65ad", type="primary", disabled=not ready):
     lookup = load_data()
     results, matched = judge(rank, lookup, vols)
-    
+    st.session_state.last_rank = rank
+    st.session_state.last_results = results
+    st.session_state.last_matched = matched
+
+if "last_results" in st.session_state and st.session_state.last_results:
+    results = st.session_state.last_results
+    matched = st.session_state.last_matched
+    my_rank = st.session_state.last_rank
     st.divider()
+
     if matched:
         tr = results[-1]
-        st.success(f"🎉 恭喜！你被 **第 {tr['志愿号']} 志愿** 录取！")
-        a, b, c = st.columns(3)
-        a.metric("院校", tr["院校"][:12])
-        b.metric("专业", tr["专业"][:12])
-        c.metric("2025最低位次", f"{tr['最低位次']:,}")
-    
-    hc = 1 if matched else 0
-    lc = sum(1 for r in results if r["结果"] == "位次不够")
-    nc = sum(1 for r in results if r["结果"] == "无匹配")
-    x, y, z = st.columns(3)
-    x.metric("✅ 命中", hc); y.metric("位次不够", lc); z.metric("无匹配", nc)
-    
-    st.subheader("📋 所有志愿详情")
-    df = pd.DataFrame(results)
-    def hl(r):
-        if r["结果"] == "✅ 录取": return ["background:#d4edda;font-weight:bold"]*len(r)
-        if r["结果"] == "位次不够": return ["background:#fff3cd"]*len(r)
-        return [""]*len(r)
-    st.dataframe(df.style.apply(hl, axis=1), use_container_width=True, hide_index=True)
-    if nc > 0:
-        st.caption("⚠ 「无匹配」表示该组合未在投档表中找到，可能是当年未招生或代码变化。")
+        st.markdown(
+            f"<div style=\"background:#d4edda;border:2px solid #28a745;border-radius:12px;padding:20px;text-align:center;margin:10px 0\">"
+            f"<div style=\"font-size:32px;font-weight:700;color:#155724\">\U0001f389 \u547d\u4e2d\uff01</div>"
+            f"<div style=\"font-size:20px;color:#155724;margin:10px 0\">\u7b2c {tr['\u5fd7\u613f\u53f7']} \u5fd7\u613f</div>"
+            f"<div style=\"font-size:16px;color:#333;margin:4px 0\">\U0001f3eb {tr['\u9662\u6821']}</div>"
+            f"<div style=\"font-size:15px;color:#555\">\U0001f4da {tr['\u4e13\u4e1a'][:30]}</div>"
+            f"<div style=\"font-size:14px;color:#666;margin-top:6px\">\U0001f4ca \u6700\u4f4e\u4f4d\u6b21 {tr['\u6700\u4f4e\u4f4d\u6b21']:,} / \u4f60\u7684\u4f4d\u6b21 {my_rank:,}</div>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 
-# ---- 管理员入口 ----
-with st.expander("⚙️ 管理员（更新投档数据）"):
-    pwd = st.text_input("管理员密码", type="password", key="admin_pwd")
+        hc = 1
+        lc = sum(1 for r in results if r["\u7ed3\u679c"] == "\u4f4d\u6b21\u4e0d\u591f")
+        nc = sum(1 for r in results if r["\u7ed3\u679c"] == "\u65e0\u5339\u914d")
+        with st.expander(f"\U0001f4cb \u67e5\u770b\u5168\u90e8 {len(results)} \u4e2a\u5fd7\u613f\u8be6\u60c5"):
+            df = pd.DataFrame(results)
+            def hl(r):
+                if r["\u7ed3\u679c"] == "\u2705 \u5f55\u53d6":
+                    return ["background:#d4edda;font-weight:bold"] * len(r)
+                return [""] * len(r)
+            st.dataframe(df.style.apply(hl, axis=1), use_container_width=True, hide_index=True)
+    else:
+        st.error("\u274c \u6240\u6709\u5fd7\u613f\u5747\u672a\u8fbe\u5230\u6700\u4f4e\u6295\u6863\u4f4d\u6b21")
+        with st.expander(f"\U0001f4cb \u67e5\u770b\u5168\u90e8 {len(results)} \u4e2a\u5fd7\u613f\u8be6\u60c5"):
+            st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+
+    if st.button("\U0001f504 \u6362\u4e2a\u6392\u540d\u518d\u8bd5"):
+        st.session_state.last_results = None
+        st.rerun()
+
+if st.session_state.show_admin:
+    st.divider()
+    st.markdown("### \u2699\ufe0f \u7ba1\u7406\u5458")
+    pwd = st.text_input("\u5bc6\u7801", type="password", key="admin_pwd")
     if pwd == ADMIN_PASSWORD:
-        st.success("✅ 验证通过")
-        # 显示数据来源
+        st.success("\u2705 \u9a8c\u8bc1\u901a\u8fc7")
         _t, _y = data_info()
-        st.info(f"📊 当前参考数据：{_y}年")
-        new_file = st.file_uploader("上传新的投档表 Excel", type=["xls", "xlsx"], key="admin_excel")
+        st.info(f"\U0001f4ca \u5f53\u524d\u53c2\u8003\u6570\u636e\uff1a{_y}\u5e74")
+        new_file = st.file_uploader("\u4e0a\u4f20\u65b0\u7684\u6295\u6863\u8868 Excel", type=["xls", "xlsx"], key="admin_excel")
         if new_file:
-            with st.spinner("正在处理..."):
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".xls") as f:
-                    f.write(new_file.getvalue()); ep = f.name
+            with st.spinner("\u6b63\u5728\u5904\u7406..."):
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".xls") as fp:
+                    fp.write(new_file.getvalue()); ep = fp.name
                 try:
                     ext = os.path.splitext(ep)[1].lower()
                     engine = "xlrd" if ext == ".xls" else "openpyxl"
                     df = pd.read_excel(ep, engine=engine, header=None)
                     hr = None
                     for i in range(min(5, len(df))):
-                        if str(df.iloc[i, 0]).strip() == "专业代号及名称":
+                        if str(df.iloc[i, 0]).strip() == "\u4e13\u4e1a\u4ee3\u53f7\u53ca\u540d\u79f0":
                             hr = i; break
                     if hr is None:
-                        st.error("格式错误：未找到表头"); os.unlink(ep)
+                        st.error("\u683c\u5f0f\u9519\u8bef\uff1a\u672a\u627e\u5230\u8868\u5934"); os.unlink(ep)
                     else:
                         new_data = {}
                         for idx in range(hr + 1, len(df)):
@@ -240,22 +267,21 @@ with st.expander("⚙️ 管理员（更新投档数据）"):
                             except: continue
                             key = sc + "|" + mc
                             new_data[key] = min(new_data[key], rk) if key in new_data else rk
-                        
                         title_row = str(df.iloc[0, 0]).strip() if len(df) > 0 else ""
-                        yr_m = re.search(r"(20\d{2})", title_row)
-                        up_yr = yr_m.group(1) if yr_m else "未知"
+                        yr_m = re.search(r"(20\\d{2})", title_row)
+                        up_yr = yr_m.group(1) if yr_m else "\u672a\u77e5"
                         st.session_state.custom_data = new_data
-                        st.session_state.custom_info = f"📊 投档数据：管理员上传（{up_yr}年，共{len(new_data)}条）"
+                        st.session_state.custom_info = f"\U0001f4ca \u6295\u6863\u6570\u636e\uff1a\u7ba1\u7406\u5458\u4e0a\u4f20\uff08{up_yr}\u5e74\uff0c\u5171{len(new_data)}\u6761\uff09"
                         st.session_state.custom_year = up_yr
-                        st.success(f"✅ 数据更新成功！共{len(new_data)}条。当前会话有效。如需永久更新，请在GitHub上替换data.json")
+                        st.success(f"\u2705 \u6570\u636e\u66f4\u65b0\u6210\u529f\uff01\u5171{len(new_data)}\u6761\u3002\u5f53\u524d\u4f1a\u8bdd\u6709\u6548\u3002\u5982\u9700\u6c38\u4e45\u66f4\u65b0\uff0c\u8bf7\u5728GitHub\u4e0a\u66ff\u6362data.json")
                         st.rerun()
                 except Exception as e:
-                    st.error(f"处理出错：{str(e)}")
+                    st.error(f"\u5904\u7406\u51fa\u9519\uff1a{str(e)}")
                 finally:
                     if os.path.exists(ep): os.unlink(ep)
     elif pwd:
-        st.error("密码错误")
+        st.error("\u5bc6\u7801\u9519\u8bef")
 
-st.warning("⚠️ 数据仅供参考，程序可能存在bug，具体投档以山东省教育招生考试院官网发布信息为准")
 st.divider()
-st.caption("💡 从第1志愿依次判断，你的位次 ≤ 该专业最低位次即被录取。数据仅本次处理，不保存。")
+st.caption("\u26a0\ufe0f \u6570\u636e\u4ec5\u4f9b\u53c2\u8003\uff0c\u7a0b\u5e8f\u53ef\u80fd\u5b58\u5728bug\uff0c\u5177\u4f53\u6295\u6863\u4ee5\u5c71\u4e1c\u7701\u6559\u80b2\u62db\u751f\u8003\u8bd5\u9662\u5b98\u7f51\u53d1\u5e03\u4fe1\u606f\u4e3a\u51c6")
+st.caption("\U0001f4a1 \u4ece\u7b2c1\u5fd7\u613f\u4f9d\u6b21\u5224\u65ad\uff0c\u4f60\u7684\u4f4d\u6b21 \u2264 \u8be5\u4e13\u4e1a\u6700\u4f4e\u4f4d\u6b21\u5373\u88ab\u5f55\u53d6\u3002\u6570\u636e\u4ec5\u672c\u6b21\u5904\u7406\uff0c\u4e0d\u4fdd\u5b58\u3002")

@@ -95,15 +95,19 @@ def parse_text(text):
 # ---- 核心分析 ----
 def judge(rank, lookup, vols):
     results = []
+    matched = False
     for item in vols:
         if len(item) == 5:
             vn, sf, sc, mc, mn = item
             key = sc + "|" + mc
+            if matched:
+                results.append({"志愿号": vn, "院校": sf, "专业": (mc + mn)[:20], "最低位次": "—", "结果": "已录取（后续不再判断）"})
+                continue
             if key in lookup:
                 mr = lookup[key]
                 if rank <= mr:
                     results.append({"志愿号": vn, "院校": sf, "专业": mc + mn, "最低位次": mr, "结果": "✅ 录取"})
-                    return results, True
+                    matched = True
                 else:
                     results.append({"志愿号": vn, "院校": sf, "专业": (mc + mn)[:20], "最低位次": mr, "结果": "位次不够"})
             else:
@@ -111,20 +115,21 @@ def judge(rank, lookup, vols):
         elif len(item) == 3:
             vn, sc, mc = item
             key = sc + "|" + mc
+            if matched:
+                results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": "—", "结果": "已录取（后续不再判断）"})
+                continue
             if key in lookup:
                 mr = lookup[key]
                 if rank <= mr:
                     results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": mr, "结果": "✅ 录取"})
-                    return results, True
+                    matched = True
                 else:
                     results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": mr, "结果": "位次不够"})
             else:
                 results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": "—", "结果": "无匹配"})
-    return results, False
+    return results, matched
 
 # ===== UI =====
-if "show_admin" not in st.session_state:
-    st.session_state.show_admin = False
 if "input_mode" not in st.session_state:
     st.session_state.input_mode = None
 if "pdf_vols" not in st.session_state:
@@ -132,20 +137,7 @@ if "pdf_vols" not in st.session_state:
 if "text_vols" not in st.session_state:
     st.session_state.text_vols = None
 
-col1, col2 = st.columns([1, 12])
-with col1:
-    if st.button("\U0001f3ab", key="adm_toggle", help="\u7ba1\u7406\u5458\u5165\u53e3"):
-        now = time.time()
-        if "adm_clicks" not in st.session_state:
-            st.session_state.adm_clicks = []
-        st.session_state.adm_clicks.append(now)
-        st.session_state.adm_clicks = [t for t in st.session_state.adm_clicks if now - t < 2]
-        if len(st.session_state.adm_clicks) >= 2:
-            st.session_state.show_admin = not st.session_state.show_admin
-            st.session_state.adm_clicks = []
-            st.rerun()
-with col2:
-    st.title("\u9ad8\u8003\u5f55\u53d6\u8f85\u52a9\u67e5\u8be2")
+st.title("\U0001f3ab \u9ad8\u8003\u5f55\u53d6\u8f85\u52a9\u67e5\u8be2")
 st.caption("\U0001f4cd \u4ec5\u5c71\u4e1c")
 
 tab1, tab2 = st.tabs(["\U0001f4c4 \u4e0a\u4f20PDF\u5fd7\u613f\u8868", "\U0001f4dd \u7c98\u8d34\u5fd7\u613f\u6587\u672c"])
@@ -230,10 +222,8 @@ if "last_results" in st.session_state and st.session_state.last_results:
         st.session_state.last_results = None
         st.rerun()
 
-if st.session_state.show_admin:
-    st.divider()
-    st.markdown("### \u2699\ufe0f \u7ba1\u7406\u5458")
-    pwd = st.text_input("\u5bc6\u7801", type="password", key="admin_pwd")
+with st.expander("\u2699\ufe0f \u7ba1\u7406\u5458\uff08\u66f4\u65b0\u6295\u6863\u6570\u636e\uff09"):
+    pwd = st.text_input("\u7ba1\u7406\u5458\u5bc6\u7801", type="password", key="admin_pwd")
     if pwd == ADMIN_PASSWORD:
         st.success("\u2705 \u9a8c\u8bc1\u901a\u8fc7")
         _t, _y = data_info()

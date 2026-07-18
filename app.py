@@ -95,7 +95,6 @@ def parse_text(text):
 # ---- 核心分析 ----
 def judge(rank, lookup, vols):
     results = []
-    matched = False
     for item in vols:
         if len(item) == 5:
             vn, sf, sc, mc, mn = item
@@ -107,7 +106,7 @@ def judge(rank, lookup, vols):
                 mr = lookup[key]
                 if rank <= mr:
                     results.append({"志愿号": vn, "院校": sf, "专业": mc + mn, "最低位次": mr, "结果": "✅ 录取"})
-                    matched = True
+                    return results, True
                 else:
                     results.append({"志愿号": vn, "院校": sf, "专业": (mc + mn)[:20], "最低位次": mr, "结果": "位次不够"})
             else:
@@ -122,12 +121,12 @@ def judge(rank, lookup, vols):
                 mr = lookup[key]
                 if rank <= mr:
                     results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": mr, "结果": "✅ 录取"})
-                    matched = True
+                    return results, True
                 else:
                     results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": mr, "结果": "位次不够"})
             else:
                 results.append({"志愿号": vn, "院校": sc, "专业": mc, "最低位次": "—", "结果": "无匹配"})
-    return results, matched
+    return results, False
 
 # ===== UI =====
 if "input_mode" not in st.session_state:
